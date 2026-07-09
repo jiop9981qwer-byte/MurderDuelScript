@@ -1,6 +1,6 @@
 
 -- [[ Koji HUD: Remote Loader ]]
-local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/main/data.txt"
+local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/refs/heads/main/main.lua"
 local key = "KOJI_HUD_SECRET_KEY"
 
 local function decode_base64(data)
