@@ -1,5 +1,5 @@
 -- [[ Koji HUD: Secure Remote Loader ]]
-local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/main/data.txt"
+local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/refs/heads/main/data.txt"
 
 local function from_hex(hex)
     local str = ""
