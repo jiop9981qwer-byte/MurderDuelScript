@@ -1,109 +1,46 @@
--- [[ Koji HUD: Murder Duels Absolute Combat System ]]
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield' ))()
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
-local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+-- [[ Koji HUD: Remote Loader ]]
+-- 사용자가 GitHub 링크를 타고 들어와도 이 코드만 보이며, 실제 핵심 로직은 암호화된 상태로 호출됩니다.
 
--- 핵심 리모트
-local ThrowRemote = Remotes:WaitForChild("ThrowReplicate")
-local HitRemote = Remotes:WaitForChild("ReportHit")
+local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/refs/heads/main/data.txt"
+local key = "KOJI_HUD_SECRET_KEY"
 
--- 상태 변수
-_G.AutoKillLoop = false
-
--- 킬 로직 함수
-local function ExecuteKill(target)
-    if not target.Character or not target.Character:FindFirstChild("Head") then return end
-    
-    local char = target.Character
-    local head = char.Head
-    local myChar = LocalPlayer.Character
-    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
-    
-    local myPos = myChar.HumanoidRootPart.Position
-    local targetPos = head.Position
-    local currentId = math.random(1, 99999)
-
-    -- [1단계] 생성 보고
-    ThrowRemote:FireServer({
-        ["toolName"] = "Knife",
-        ["id"] = currentId,
-        ["ownerUserId"] = LocalPlayer.UserId,
-        ["origin"] = myPos,
-        ["isExplosive"] = false,
-        ["power"] = 1,
-        ["target"] = targetPos,
-        ["effects"] = {Shotgun=0, Portal=0, Smoke=0, Explosive=0, Flammable=0}
-    })
-
-    -- [2단계] 적중 보고 (데미지 확정)
-    HitRemote:FireServer({
-        ["hitPos"] = targetPos,
-        ["ownerUserId"] = LocalPlayer.UserId,
-        ["origin"] = myPos,
-        ["vel"] = Vector3.new(100, 100, 100),
-        ["headshot"] = true,
-        ["targetUserId"] = target.UserId,
-        ["targetModel"] = char,
-        ["to"] = targetPos,
-        ["throwId"] = currentId,
-        ["kind"] = "throw",
-        ["at"] = tick(),
-        ["hitPart"] = head
-    })
+local function decode_base64(data)
+    local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    data = string.gsub(data, '[^'..b..'=]', '')
+    return (data:gsub('.', function(x)
+        if (x == '=') then return '' end
+        local r, f = '', (b:find(x) - 1)
+        for i = 6, 1, -1 do r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and '1' or '0') end
+        return r;
+    end):gsub('%d%d%d%d%d%d%d%d', function(x)
+        local c = 0
+        for i = 1, 8 do c = c + (x:sub(i, i) == '1' and 2 ^ (8 - i) or 0) end
+        return string.char(c)
+    end))
 end
 
--- UI 구성 (Koji HUD)
-local Window = Rayfield:CreateWindow({
-    Name = "Koji HUD | Murder Duels",
-    LoadingTitle = "Koji HUD Loading...",
-    LoadingSubtitle = "by Koji",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "KojiHUD",
-        FileName = "MurderDuels"
-    }
-})
+local function xor_decrypt(data, key)
+    local res = ""
+    for i = 1, #data do
+        local b = data:byte(i)
+        local k = key:byte((i - 1) % #key + 1)
+        res = res .. string.char(bit32.bxor(b, k))
+    end
+    return res
+end
 
-local CombatTab = Window:CreateTab("Combat", 4483362458)
+local success, encoded_data = pcall(function()
+    return game:HttpGet(data_url)
+end)
 
--- 1. 올킬 (Button): 즉시 1회 전원 처치
-CombatTab:CreateButton({
-    Name = "Kill All (즉시 전원 처치)",
-    Callback = function()
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") then
-                if p.Character.Humanoid.Health > 0 and not p.Character:FindFirstChildOfClass("ForceField") then
-                    pcall(function() ExecuteKill(p) end)
-                end
-            end
-        end
-        Rayfield:Notify({Title = "성공", Content = "모든 플레이어를 공격했습니다."})
-    end,
-})
-
--- 2. 올킬 (자동): 5초 간격 자동 실행 토글
-CombatTab:CreateToggle({
-    Name = "Auto Kill (5초 자동 반복)",
-    CurrentValue = false,
-    Callback = function(Value)
-        _G.AutoKillLoop = Value
-        if Value then
-            task.spawn(function()
-                while _G.AutoKillLoop do
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") then
-                            if p.Character.Humanoid.Health > 0 and not p.Character:FindFirstChildOfClass("ForceField") then
-                                pcall(function() ExecuteKill(p) end)
-                            end
-                        end
-                    end
-                    task.wait(5) -- 안전을 위해 5초 간격 유지
-                end
-            end)
-        end
-    end,
-})
-
-Rayfield:Notify({ Title = "Koji HUD 가동", Content = "전투 준비가 완료되었습니다!" })
+if success then
+    local decrypted = xor_decrypt(decode_base64(encoded_data), key)
+    local func, err = loadstring(decrypted)
+    if func then
+        func()
+    else
+        warn("로딩 중 오류 발생: " .. tostring(err))
+    end
+else
+    warn("데이터를 불러오지 못했습니다. 인터넷 연결 또는 URL을 확인하세요.")
+end
