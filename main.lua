@@ -1,7 +1,7 @@
 -- [[ Koji HUD: Remote Loader ]]
 -- 사용자가 GitHub 링크를 타고 들어와도 이 코드만 보이며, 실제 핵심 로직은 암호화된 상태로 호출됩니다.
 
-local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/refs/heads/main/data.txt"
+local data_url = "https://raw.githubusercontent.com/jiop9981qwer-byte/MurderDuelScript/main/data.txt"
 local key = "KOJI_HUD_SECRET_KEY"
 
 local function decode_base64(data)
